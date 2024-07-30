@@ -30,12 +30,11 @@ db.connect((err) => {
   }
 });
 
+// Route pour l'inscription des utilisateurs
 app.post('/api/signup', async (req, res) => {
   try {
     const { nom, prenom, email, password } = req.body;
-
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const user = { nom, prenom, email, password: hashedPassword };
     const query = 'INSERT INTO utilisateurs SET ?';
 
@@ -53,9 +52,9 @@ app.post('/api/signup', async (req, res) => {
   }
 });
 
+// Route pour la connexion des utilisateurs
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
-
   const query = 'SELECT * FROM utilisateurs WHERE email = ?';
 
   db.query(query, [email], async (err, results) => {
@@ -65,7 +64,6 @@ app.post('/api/login', (req, res) => {
     } else {
       if (results.length > 0) {
         const user = results[0];
-
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (isMatch) {
@@ -80,19 +78,34 @@ app.post('/api/login', (req, res) => {
   });
 });
 
+// Route pour la recherche de produits et de pharmacies
 app.get('/api/search', (req, res) => {
-  const { product } = req.query;
+  const { product, latitude, longitude } = req.query;
+
+  if (!product || !latitude || !longitude) {
+    return res.status(400).send({ message: 'Missing parameters' });
+  }
 
   const query = `
-    SELECT pharmacies.nom AS pharmacie_nom, pharmacies.adresse AS pharmacie_adresse, pharmacies.telephone AS pharmacie_telephone
+    SELECT 
+      pharmacies.nom AS pharmacie_nom, 
+      pharmacies.adresse AS pharmacie_adresse, 
+      pharmacies.telephone AS pharmacie_telephone,
+      pharmacies.latitude AS latitude,
+      pharmacies.longitude AS longitude,
+      (6371 * acos(
+        cos(radians(?)) * cos(radians(pharmacies.latitude)) * cos(radians(pharmacies.longitude) - radians(?)) + 
+        sin(radians(?)) * sin(radians(pharmacies.latitude))
+      )) AS distance
     FROM disponibilites
     JOIN produits ON disponibilites.produit_id = produits.idpro
     JOIN pharmacies ON disponibilites.pharmacie_id = pharmacies.idphar
-    WHERE produits.nom LIKE ?
-    LIMIT 10
-  `;
+    WHERE produits.nom LIKE ? 
+      AND pharmacies.de_garde = TRUE
+    ORDER BY distance
+    LIMIT 10`;
 
-  db.query(query, [`%${product}%`], (err, results) => {
+  db.query(query, [latitude, longitude, latitude, `%${product}%`], (err, results) => {
     if (err) {
       console.error('Erreur lors de la requête:', err);
       res.status(500).send({ message: 'Erreur lors de la recherche.' });
@@ -101,12 +114,10 @@ app.get('/api/search', (req, res) => {
     }
   });
 });
-// Ajoutez ceci dans votre fichier server.js
 
-// Route pour faire une réservation
+// Route pour la réservation de produits
 app.post('/api/reserve', (req, res) => {
   const { userId, pharmacyId, productId } = req.body;
-
   const query = 'INSERT INTO reservations (user_id, pharmacy_id, product_id) VALUES (?, ?, ?)';
 
   db.query(query, [userId, pharmacyId, productId], (err, result) => {
@@ -122,7 +133,6 @@ app.post('/api/reserve', (req, res) => {
 // Route pour obtenir les détails d'une pharmacie
 app.get('/api/pharmacy/:id', (req, res) => {
   const { id } = req.params;
-
   const query = 'SELECT * FROM pharmacies WHERE idphar = ?';
 
   db.query(query, [id], (err, results) => {
@@ -135,7 +145,7 @@ app.get('/api/pharmacy/:id', (req, res) => {
   });
 });
 
-
+// Options CORS pour toutes les routes
 app.options('*', cors(corsOptions));
 
 const PORT = process.env.PORT || 3000;

@@ -1,10 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import axios from 'axios';
+import * as WebBrowser from 'expo-web-browser';
 
 const PharmacyDetailsScreen = ({ navigation, route }) => {
   const { pharmacyId } = route.params;
   const [pharmacy, setPharmacy] = useState({});
+  const [product, setProduct] = useState({
+    nom: 'Nom du médicament ici',
+    description: 'Description du médicament ici',
+    prix: 'Prix du médicament ici',
+  });
   const [userId, setUserId] = useState(1); // Remplacer par l'ID utilisateur réel
   const [productId, setProductId] = useState(1); // Remplacer par l'ID produit réel
 
@@ -31,6 +37,8 @@ const PharmacyDetailsScreen = ({ navigation, route }) => {
 
       if (response.status === 200) {
         Alert.alert('Succès', 'Réservation réussie!');
+        // Rediriger vers la page de paiement
+        navigation.navigate('Payment', { pharmacy, product });
       }
     } catch (error) {
       Alert.alert('Erreur', 'Réservation échouée!');
@@ -39,11 +47,12 @@ const PharmacyDetailsScreen = ({ navigation, route }) => {
   };
 
   const handleRoute = () => {
-    navigation.navigate('Route', { pharmacyId });
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${pharmacy.latitude},${pharmacy.longitude}`;
+    WebBrowser.openBrowserAsync(url);
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerText}>
           <Text style={styles.headerTextGreen}>Géo</Text>
@@ -51,22 +60,22 @@ const PharmacyDetailsScreen = ({ navigation, route }) => {
         </Text>
         <Text style={styles.pharmacyName}>{pharmacy.nom}</Text>
       </View>
+      <View style={styles.productContainer}>
+        <Text style={styles.sectionTitle}>Nom du médicament:</Text>
+        <Text>{product.nom}</Text>
+        <Text style={styles.sectionTitle}>Description:</Text>
+        <Text>{product.description}</Text>
+        <Text style={styles.sectionTitle}>Prix:</Text>
+        <Text>{product.prix}</Text>
+      </View>
       <View style={styles.infoContainer}>
         <View style={styles.infoSection}>
-          <Text style={styles.sectionTitle}>Nom du médicament:</Text>
-          <Text>Nom du médicament ici</Text>
+          <Text style={styles.sectionTitle}>Adresse:</Text>
+          <Text>{pharmacy.adresse}</Text>
         </View>
         <View style={styles.infoSection}>
-          <Text style={styles.sectionTitle}>Dosage:</Text>
-          <Text>Dosage du médicament ici</Text>
-        </View>
-        <View style={styles.infoSection}>
-          <Text style={styles.sectionTitle}>Instructions:</Text>
-          <Text>Instructions d'utilisation ici</Text>
-        </View>
-        <View style={styles.infoSection}>
-          <Text style={styles.sectionTitle}>Effets secondaires:</Text>
-          <Text>Effets secondaires possibles ici</Text>
+          <Text style={styles.sectionTitle}>Téléphone:</Text>
+          <Text>{pharmacy.telephone}</Text>
         </View>
       </View>
       <TouchableOpacity style={styles.reserveButton} onPress={handleReservation}>
@@ -75,7 +84,7 @@ const PharmacyDetailsScreen = ({ navigation, route }) => {
       <TouchableOpacity style={styles.routeButton} onPress={handleRoute}>
         <Text style={styles.routeButtonText}>Tracer l'itinéraire</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 };
 
@@ -103,6 +112,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginTop: 10,
+  },
+  productContainer: {
+    marginBottom: 20,
   },
   infoContainer: {
     flex: 1,

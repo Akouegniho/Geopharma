@@ -1,27 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import * as Location from 'expo-location';
 
 const SearchScreen = ({ route, navigation }) => {
   const { query } = route.params;
   const [results, setResults] = useState([]);
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
+
+  useEffect(() => {
+    const fetchLocation = async () => {
+      try {
+        // Demander la permission d'accéder à la position de l'utilisateur
+        let { status } = await Location.requestPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Erreur', 'Permission de localisation refusée.');
+          return;
+        }
+
+        // Obtenir la position de l'utilisateur
+        let location = await Location.getCurrentPositionAsync({});
+        setLatitude(location.coords.latitude);
+        setLongitude(location.coords.longitude);
+      } catch (error) {
+        Alert.alert('Erreur', 'Une erreur est survenue lors de la récupération de la position.');
+      }
+    };
+
+    fetchLocation();
+  }, []);
 
   useEffect(() => {
     const fetchResults = async () => {
-      try {
-        const response = await fetch(`http://localhost:3000/api/search?product=${query}`);
-        const data = await response.json();
-        if (response.ok) {
-          setResults(data);
-        } else {
-          Alert.alert('Erreur', data.message);
+      if (latitude && longitude) {
+        try {
+          const response = await fetch(`http://localhost:3000/api/search?product=${query}&latitude=${latitude}&longitude=${longitude}`);
+          const data = await response.json();
+          if (response.ok) {
+            setResults(data);
+          } else {
+            Alert.alert('Erreur', data.message);
+          }
+        } catch (error) {
+          Alert.alert('Erreur', 'Une erreur est survenue lors de la recherche.');
         }
-      } catch (error) {
-        Alert.alert('Erreur', 'Une erreur est survenue lors de la recherche.');
       }
     };
 
     fetchResults();
-  }, [query]);
+  }, [query, latitude, longitude]);
 
   return (
     <View style={styles.container}>
