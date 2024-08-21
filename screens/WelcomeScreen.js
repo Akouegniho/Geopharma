@@ -13,6 +13,11 @@ const WelcomeScreen = ({ navigation }) => {
     }
   };
 
+  const handleMenuPress = () => {
+    // Code pour ouvrir le menu ou naviguer vers une autre page
+    Alert.alert('Menu', 'Fonctionnalité du menu à implémenter.');
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -20,10 +25,9 @@ const WelcomeScreen = ({ navigation }) => {
           <Text style={styles.appNameGreen}>Géo</Text>
           <Text style={styles.appNameBlue}>pharma</Text>
         </Text>
-        <TouchableOpacity style={styles.menuIcon} onPress={() => navigation.openDrawer()}>
-          <Ionicons name="menu" size={24} color="black" />
-        </TouchableOpacity>
+        
       </View>
+
       <TextInput
         style={styles.searchInput}
         placeholder="Rechercher des médicaments..."
@@ -31,9 +35,11 @@ const WelcomeScreen = ({ navigation }) => {
         onChangeText={setSearchQuery}
         onSubmitEditing={handleSearch}
       />
+
       <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
         <Text style={styles.searchButtonText}>Rechercher</Text>
       </TouchableOpacity>
+
       <ScrollView style={styles.carousel}>
         <TouchableOpacity style={styles.articleItem}>
           <Image source={{ uri: 'https://via.placeholder.com/150' }} style={styles.articleImage} />
@@ -43,14 +49,16 @@ const WelcomeScreen = ({ navigation }) => {
             <Text style={styles.paymentButtonText}>Payer</Text>
           </TouchableOpacity>
         </TouchableOpacity>
+
         <TouchableOpacity style={styles.articleItem}>
-          <Image source={{ uri: ' https://www.apothicaire-pharmacie.com/media/catalog/product/cache/6a3c24cc3e7a0db8d1f5b96edcf88f7e/1/1/1121.jpg' }} style={styles.articleImage} />
+          <Image source={{ uri: 'https://www.apothicaire-pharmacie.com/media/catalog/product/cache/6a3c24cc3e7a0db8d1f5b96edcf88f7e/1/1/1121.jpg' }} style={styles.articleImage} />
           <Text style={styles.articleTitle}>Article 2</Text>
           <Text style={styles.articlePrice}>15€</Text>
           <TouchableOpacity style={styles.paymentButton}>
             <Text style={styles.paymentButtonText}>Payer</Text>
           </TouchableOpacity>
         </TouchableOpacity>
+
         <TouchableOpacity style={styles.articleItem}>
           <Image source={{ uri: 'https://via.placeholder.com/150' }} style={styles.articleImage} />
           <Text style={styles.articleTitle}>Article 3</Text>

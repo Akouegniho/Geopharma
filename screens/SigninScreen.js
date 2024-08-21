@@ -1,34 +1,38 @@
 import React, { useState } from 'react';
-import { View, Button, TextInput, StyleSheet, Alert } from 'react-native';
+import { View, TextInput, Button, Alert, StyleSheet } from 'react-native';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SigninScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSignin = async () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Erreur', 'Veuillez entrer votre email et mot de passe.');
       return;
     }
 
     try {
-      const response = await fetch('http://localhost:3000/api/login', {
-        method: 'POST', // Utilisez 'POST' au lieu de 'GET'
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+      const response = await axios.post('http://localhost:3000/api/login', {
+        email,
+        password,
       });
 
-      const data = await response.json();
+      if (response.status === 200) {
+        const { token } = response.data;
 
-      if (response.ok) {
-        navigation.navigate('Welcome');
+        // Stocker le token dans AsyncStorage
+        await AsyncStorage.setItem('authToken', token);
+        
+        Alert.alert('Succès', 'Connexion réussie!');
+        navigation.navigate('Welcome'); // Redirection vers l'écran d'accueil ou autre après connexion
       } else {
-        Alert.alert('Erreur', data.message || 'Une erreur est survenue.');
+        Alert.alert('Erreur', response.data.message);
       }
     } catch (error) {
-      Alert.alert('Erreur', 'Une erreur est survenue.');
+      console.error('Erreur lors de la connexion:', error);
+      Alert.alert('Erreur', 'Une erreur est survenue lors de la connexion.');
     }
   };
 
@@ -37,18 +41,17 @@ const SigninScreen = ({ navigation }) => {
       <TextInput
         style={styles.input}
         placeholder="Email"
-        keyboardType="email-address"
         value={email}
-        onChangeText={(text) => setEmail(text)}
+        onChangeText={setEmail}
       />
       <TextInput
         style={styles.input}
         placeholder="Mot de passe"
-        secureTextEntry={true}
+        secureTextEntry
         value={password}
-        onChangeText={(text) => setPassword(text)}
+        onChangeText={setPassword}
       />
-      <Button title="Se connecter" onPress={handleSignin} />
+      <Button title="Se connecter" onPress={handleLogin} />
     </View>
   );
 };
@@ -56,19 +59,15 @@ const SigninScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    padding: 20,
     justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    paddingHorizontal: 20,
   },
   input: {
     height: 40,
-    width: '100%',
-    marginBottom: 10,
-    paddingHorizontal: 10,
     borderColor: '#ccc',
     borderWidth: 1,
-    borderRadius: 5,
+    marginBottom: 15,
+    paddingHorizontal: 10,
   },
 });
 

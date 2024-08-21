@@ -1,149 +1,135 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, Animated, TouchableOpacity, Alert } from 'react-native';
 import axios from 'axios';
-import * as WebBrowser from 'expo-web-browser';
+import * as Location from 'expo-location';
+import * as Linking from 'expo-linking';
 
-const PharmacyDetailsScreen = ({ navigation, route }) => {
-  const { pharmacyId } = route.params;
-  const [pharmacy, setPharmacy] = useState({});
-  const [product, setProduct] = useState({
-    nom: 'Nom du médicament ici',
-    description: 'Description du médicament ici',
-    prix: 'Prix du médicament ici',
-  });
-  const [userId, setUserId] = useState(1); // Remplacer par l'ID utilisateur réel
-  const [productId, setProductId] = useState(1); // Remplacer par l'ID produit réel
+const PharmacyDetailsScreen = ({ route, navigation }) => {
+  const { pharmacyId, productId } = route.params;
+  const [loading, setLoading] = useState(true);
+  const [details, setDetails] = useState(null);
+  const fadeAnim = useState(new Animated.Value(0))[0];
 
   useEffect(() => {
-    const fetchPharmacyDetails = async () => {
+    const fetchDetails = async () => {
       try {
-        const response = await axios.get(`http://localhost:3000/api/pharmacy/${pharmacyId}`);
-        setPharmacy(response.data);
+        const response = await axios.get(`http://localhost:3000/api/pharmacy/${pharmacyId}/product/${productId}`);
+        if (response.data) {
+          setDetails(response.data);
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 500,
+          }).start();
+        } else {
+          Alert.alert('Erreur', 'Détails non trouvés.');
+        }
       } catch (error) {
-        console.error('Erreur lors de la récupération des détails de la pharmacie:', error);
+        console.error('Erreur lors de la récupération des détails:', error);
+        Alert.alert('Erreur', 'Erreur lors de la récupération des détails.');
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchPharmacyDetails();
-  }, [pharmacyId]);
+    if (pharmacyId && productId) {
+      fetchDetails();
+    } else {
+      setLoading(false);
+      Alert.alert('Erreur', 'ID de pharmacie ou de produit manquant.');
+    }
+  }, [pharmacyId, productId, fadeAnim]);
 
-  const handleReservation = async () => {
+  const handleGetDirections = async () => {
     try {
-      const response = await axios.post('http://localhost:3000/api/reserve', {
-        userId,
-        pharmacyId,
-        productId,
-      });
-
-      if (response.status === 200) {
-        Alert.alert('Succès', 'Réservation réussie!');
-        // Rediriger vers la page de paiement
-        navigation.navigate('Payment', { pharmacy, product });
-      }
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+      const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${details.latitude},${details.longitude}`;
+      Linking.openURL(googleMapsUrl);
     } catch (error) {
-      Alert.alert('Erreur', 'Réservation échouée!');
-      console.error('Erreur lors de la réservation:', error);
+      console.error('Erreur lors de la récupération de la position:', error);
+      Alert.alert('Erreur', 'Erreur lors de la récupération de la position.');
     }
   };
 
-  const handleRoute = () => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${pharmacy.latitude},${pharmacy.longitude}`;
-    WebBrowser.openBrowserAsync(url);
+  const handleReservation = () => {
+    navigation.navigate('Reservation', { pharmacyId, productId, details });
   };
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  if (!details) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Aucun détail disponible.</Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>
-          <Text style={styles.headerTextGreen}>Géo</Text>
-          <Text style={styles.headerTextBlue}>pharma</Text>
-        </Text>
-        <Text style={styles.pharmacyName}>{pharmacy.nom}</Text>
-      </View>
-      <View style={styles.productContainer}>
-        <Text style={styles.sectionTitle}>Nom du médicament:</Text>
-        <Text>{product.nom}</Text>
-        <Text style={styles.sectionTitle}>Description:</Text>
-        <Text>{product.description}</Text>
-        <Text style={styles.sectionTitle}>Prix:</Text>
-        <Text>{product.prix}</Text>
-      </View>
-      <View style={styles.infoContainer}>
-        <View style={styles.infoSection}>
-          <Text style={styles.sectionTitle}>Adresse:</Text>
-          <Text>{pharmacy.adresse}</Text>
-        </View>
-        <View style={styles.infoSection}>
-          <Text style={styles.sectionTitle}>Téléphone:</Text>
-          <Text>{pharmacy.telephone}</Text>
-        </View>
-      </View>
-      <TouchableOpacity style={styles.reserveButton} onPress={handleReservation}>
-        <Text style={styles.reserveButtonText}>Réserver</Text>
+    <Animated.View style={{ ...styles.container, opacity: fadeAnim }}>
+      <Text style={styles.heading}>{details.pharmacie_nom}</Text>
+      <Text style={styles.detailText}>Produit recherché: {details.produit_nom}</Text>
+      <Text style={styles.detailText}>Description: {details.produit_description}</Text>
+      <Text style={styles.detailText}>Prix unitaire: {details.produit_prix} €</Text>
+      <Text style={styles.detailText}>Adresse: {details.pharmacie_adresse}</Text>
+      <Text style={styles.detailText}>Téléphone: {details.pharmacie_telephone}</Text>
+      
+      <TouchableOpacity style={styles.button} onPress={handleReservation}>
+        <Text style={styles.buttonText}>Réserver</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.routeButton} onPress={handleRoute}>
-        <Text style={styles.routeButtonText}>Tracer l'itinéraire</Text>
-      </TouchableOpacity>
-    </ScrollView>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: 'white',
+    padding: 20,
+    backgroundColor: '#e6f7ff',
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  headerText: {
-    fontSize: 24,
+  heading: {
+    fontSize: 28,
     fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#0066cc',
+    textAlign: 'center',
   },
-  headerTextGreen: {
-    color: 'green',
-  },
-  headerTextBlue: {
-    color: 'blue',
-  },
-  pharmacyName: {
+  detailText: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  productContainer: {
-    marginBottom: 20,
-  },
-  infoContainer: {
-    flex: 1,
-  },
-  infoSection: {
     marginBottom: 10,
+    color: '#003366',
   },
-  sectionTitle: {
-    fontWeight: 'bold',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#e6f7ff',
   },
-  reserveButton: {
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#e6f7ff',
+  },
+  errorText: {
+    fontSize: 18,
+    color: 'red',
+  },
+  button: {
+    backgroundColor: '#009933',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
     marginTop: 20,
-    padding: 16,
-    backgroundColor: 'green',
-    alignItems: 'center',
-    borderRadius: 8,
   },
-  reserveButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  routeButton: {
-    marginTop: 10,
-    padding: 16,
-    backgroundColor: 'blue',
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  routeButtonText: {
+  buttonText: {
+    fontSize: 18,
     color: 'white',
     fontWeight: 'bold',
   },
